@@ -1,0 +1,4 @@
+[submodule "third_party/sirius/sirius"]
+	path = third_party/sirius/sirius
+	url = https://github.com/CS-SI/SIRIUS.git
+	branch = master
