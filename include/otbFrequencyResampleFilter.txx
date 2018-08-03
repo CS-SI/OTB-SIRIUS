@@ -122,17 +122,17 @@ void FrequencyResampleFilter<TInputImage, TOutputImage>::ThreadedGenerateData(
                          remaining_zero_padding);
 
     auto input_block = GenerateImageFromRegion(input_region);
-    auto zoomed_block = frequency_zoom_->Compute(
+    auto resampled_block = frequency_resampler_->Compute(
           zoom_ratio_, input_block, remaining_zero_padding, filter_);
 
     itk::ImageRegionIterator<OutputImageType> oit(this->GetOutput(),
                                                   output_region);
-    auto zoomed_block_it = zoomed_block.data.cbegin();
-    auto zoomed_block_end_it = zoomed_block.data.cend();
+    auto resampled_block_it = resampled_block.data.cbegin();
+    auto resampled_block_end_it = resampled_block.data.cend();
     for (oit.GoToBegin();
-         !oit.IsAtEnd() && zoomed_block_it != zoomed_block_end_it;
-         ++oit, ++zoomed_block_it) {
-        oit.Set(static_cast<OutputPixelType>(*zoomed_block_it));
+         !oit.IsAtEnd() && resampled_block_it != resampled_block_end_it;
+         ++oit, ++resampled_block_it) {
+        oit.Set(static_cast<OutputPixelType>(*resampled_block_it));
     }
 }
 
@@ -300,18 +300,13 @@ void FrequencyResampleFilter<TInputImage, TOutputImage>::ResizeOutputRegion(
 
 template <class TInputImage, class TOutputImage>
 void FrequencyResampleFilter<TInputImage, TOutputImage>::Init(
-      const sirius::ZoomRatio& zoom_ratio, const std::string& filter_path,
-      sirius::PaddingType padding_type,
+      const sirius::ZoomRatio& zoom_ratio, sirius::Filter&& filter,
       sirius::ImageDecompositionPolicies image_decomposition,
       sirius::FrequencyZoomStrategies zoom_strategy) {
     zoom_ratio_ = zoom_ratio;
-    if (!filter_path.empty()) {
-        padding_type_ = padding_type;
-        filter_ =
-              sirius::Filter::Create(filter_path, zoom_ratio_, padding_type_);
-    }
-    frequency_zoom_ = sirius::FrequencyZoomFactory::Create(image_decomposition,
-                                                           zoom_strategy);
+    filter_ = std::move(filter);
+    frequency_resampler_ = sirius::FrequencyResamplerFactory::Create(
+          image_decomposition, zoom_strategy);
 }
 
 }  // namespace otb

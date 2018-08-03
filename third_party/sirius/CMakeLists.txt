@@ -19,6 +19,8 @@
 # along with OTB-SIRIUS.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+set(SIRIUS_VERSION "0.0.0")
+set(SIRIUS_REVISION_COMMIT ".....")
 set(ENABLE_LOGS ON)
 set(ENABLE_CACHE_OPTIMIZATION ON)
 set(ENABLE_GSL_CONTRACTS OFF)

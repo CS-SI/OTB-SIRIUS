@@ -22,7 +22,7 @@
 cmake_minimum_required(VERSION 3.2)
 project(FrequencyResample)
 
-set(FREQUENCY_RESAMPLE_VERSION "1.0.0")
+set(FREQUENCY_RESAMPLE_VERSION "0.0.0")
 
 message(STATUS "FreqZoom ${FREQUENCY_RESAMPLE_VERSION}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
