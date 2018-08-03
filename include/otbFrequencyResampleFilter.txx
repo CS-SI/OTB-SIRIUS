@@ -211,7 +211,7 @@ FrequencyResampleFilter<TInputImage, TOutputImage>::GetRemainingPadding(
       const InputImageRegionType& input_region,
       const InputImageRegionType& largest_input_region) {
     sirius::Padding remaining_padding;
-    remaining_padding.type = padding_type_;
+    remaining_padding.type = filter_.padding_type();
 
     auto idx = input_region.GetIndex();
     auto size = input_region.GetSize();
@@ -222,16 +222,17 @@ FrequencyResampleFilter<TInputImage, TOutputImage>::GetRemainingPadding(
 
     auto largest_region_size = largest_input_region.GetSize();
 
-    if (idx[0] + size[0] + filter_padding.col > largest_region_size[0]) {
-        remaining_padding.right =
-              (idx[0] + size[0] + filter_padding.col) - largest_region_size[0];
+    // idx is negatively shifted by the filter padding size
+    // size already contains the whole padding
+
+    if ((idx[0] + size[0]) > largest_region_size[0]) {
+        remaining_padding.right = (idx[0] + size[0]) - largest_region_size[0];
     } else {
         remaining_padding.right = 0;
     }
 
-    if (idx[1] + size[1] + filter_padding.row > largest_region_size[1]) {
-        remaining_padding.bottom =
-              (idx[1] + size[1] + filter_padding.row) - largest_region_size[1];
+    if ((idx[1] + size[1]) > largest_region_size[1]) {
+        remaining_padding.bottom = (idx[1] + size[1]) - largest_region_size[1];
     } else {
         remaining_padding.bottom = 0;
     }
