@@ -21,7 +21,7 @@
 
 #include <sstream>
 
-#include <sirius/frequency_zoom_factory.h>
+#include <sirius/filter.h>
 #include <sirius/sirius.h>
 #include <sirius/types.h>
 #include <sirius/utils/log.h>
@@ -61,7 +61,6 @@ class FrequencyResample : public Application {
         SetDocLongDescription(description.str());
         SetDocName("FrequencyResample");
         SetDocLimitations(
-              "* resolution.input or resolution.output must be positive\n"
               "* memory usage during processing is directly proportional to "
               "input resolution and image block size");
         SetDocAuthors("Sirius developers");
@@ -80,45 +79,56 @@ class FrequencyResample : public Application {
         MandatoryOff("v");
         SetParameterString("v", "info");
 
-        // resolution
-        AddParameter(ParameterType_Group, "resolution",
-                     "Resolution parameters");
-        AddParameter(ParameterType_Int, "resolution.input",
-                     "numerator of the zoom ratio");
-        SetDefaultParameterInt("resolution.input", 1);
-        SetMinimumParameterIntValue("resolution.input", 1);
-
-        AddParameter(ParameterType_Int, "resolution.output",
-                     "denominator of the zoom ratio");
-        SetDefaultParameterInt("resolution.output", 1);
-        SetMinimumParameterIntValue("resolution.output", 1);
+        // resampling
+        AddParameter(ParameterType_Group, "resampling", "Resampling options");
+        AddParameter(ParameterType_String, "resampling.ratio",
+                     "Resampling ratio as input:output, allowed format: I "
+                     "(equivalent to I:1), I:O");
+        SetParameterString("resampling.ratio", "1:1");
+        AddParameter(ParameterType_Empty, "resampling.noimagedecomposition",
+                     "Do not decompose the input image (default: periodic plus "
+                     "smooth image decomposition)");
+        AddParameter(ParameterType_Group, "resampling.upsample",
+                     "Upsample options");
+        AddParameter(ParameterType_Empty, "resampling.upsample.periodization",
+                     "Force periodization as upsampling algorithm (default "
+                     "algorithm if a filter is provided). A filter is required "
+                     "to use this algorithm");
+        AddParameter(ParameterType_Empty, "resampling.upsample.zeropadding",
+                     "Force zero padding as upsampling algorithm (default "
+                     "algorithm if no filter is provided)");
 
         // filter
-        AddParameter(ParameterType_Group, "filter", "filter parameters");
+        AddParameter(ParameterType_Group, "filter", "filter options");
         AddParameter(ParameterType_String, "filter.path",
                      "Path to the filter image to apply to the zoomed image");
         MandatoryOff("filter.path");
-        AddParameter(ParameterType_Empty, "filter.zeropadding",
-                     "Use zero padding strategy to add filter margins to the "
-                     "input data (default is mirror padding)");
-        MandatoryOff("filter.zeropadding");
+        AddParameter(ParameterType_Empty, "filter.normalize",
+                     "Normalize filter coefficients "
+                     "(default: no normalization)");
+        MandatoryOff("filter.normalize");
+        AddParameter(ParameterType_Empty, "filter.zeropadrealedges",
+                     "Force zero padding strategy on real input edges "
+                     "(default: mirror padding)");
+        MandatoryOff("filter.zeropadrealedges");
 
-        // zoom
-        AddParameter(ParameterType_Group, "zoom", "zoom parameters");
-        AddParameter(ParameterType_Empty, "zoom.periodicsmooth",
-                     "Use Periodic plus Smooth image decomposition (default is "
-                     "regular image decomposition)");
-        MandatoryOff("zoom.periodicsmooth");
+        AddParameter(ParameterType_Group, "filter.hotpoint",
+                     "hotpoint filter options");
+        AddParameter(ParameterType_Int, "filter.hotpoint.x",
+                     "Hot point x coordinate");
+        SetDefaultParameterInt("filter.hotpoint.x",
+                               sirius::filter_default_hot_point.x);
+        MandatoryOff("filter.hotpoint.x");
+        AddParameter(ParameterType_Int, "filter.hotpoint.y",
+                     "Hot point y coordinate");
+        SetDefaultParameterInt("filter.hotpoint.y",
+                               sirius::filter_default_hot_point.y);
+        MandatoryOff("filter.hotpoint.y");
 
-        AddParameter(ParameterType_Empty, "zoom.zeropadding",
-                     "Use zero padding zoom algorithm (default is "
-                     "periodization zoom algorithm)");
-        MandatoryOff("zoom.zeropadding");
-
+        // upsampling
         SetDocExampleParameterValue("in", "lena.jpg");
         SetDocExampleParameterValue("out", "lena_z2.jpg");
-        SetDocExampleParameterValue("resolution.input", "2");
-        SetDocExampleParameterValue("resolution.output", "1");
+        SetDocExampleParameterValue("resampling.ratio", "2:1");
     }
 
     void DoUpdateParameters() override {}
@@ -126,42 +136,80 @@ class FrequencyResample : public Application {
     void DoExecute() override {
         filter_ = FilterType::New();
 
-        // zoom
-        int input_resolution = GetParameterInt("resolution.input");
-        int output_resolution = GetParameterInt("resolution.output");
-        bool periodic_smooth = GetParameterEmpty("zoom.periodicsmooth");
-        bool zero_padding_zoom = GetParameterEmpty("zoom.zeropadding");
-
-        // frequency filter
-        std::string filter_path = GetParameterAsString("filter.path");
-        bool filter_zero_padding = GetParameterEmpty("filter.zeropadding");
-
+        // sirius verbosity
         std::string verbosity = GetParameterAsString("v");
         sirius::utils::SetVerbosityLevel(verbosity);
 
-        sirius::ZoomRatio zoom_ratio(input_resolution, output_resolution);
+        // resampling
+        auto resampling_ratio = GetParameterAsString("resampling.ratio");
+        auto zoom_ratio = sirius::ZoomRatio::Create(resampling_ratio);
 
-        sirius::PaddingType filter_padding_type =
-              sirius::PaddingType::kMirrorPadding;
-        if (filter_zero_padding) {
-            filter_padding_type = sirius::PaddingType::kZeroPadding;
+        auto no_image_decomposition =
+              GetParameterEmpty("resampling.noimagedecomposition");
+        auto force_upsample_periodization =
+              GetParameterEmpty("resampling.upsample.periodization");
+        auto force_upsample_zero_padding =
+              GetParameterEmpty("resampling.upsample.zeropadding");
+
+        // frequency filter
+        auto filter_path = GetParameterAsString("filter.path");
+        auto filter_normalize = GetParameterEmpty("filter.normalize");
+        auto zero_pad_real_edges = GetParameterEmpty("filter.zeropadrealedges");
+
+        sirius::Point hotpoint = sirius::filter_default_hot_point;
+        hotpoint.x = GetParameterInt("filter.hotpoint.x");
+        hotpoint.y = GetParameterInt("filter.hotpoint.y");
+
+        sirius::PaddingType padding_type = sirius::PaddingType::kMirrorPadding;
+        if (zero_pad_real_edges) {
+            padding_type = sirius::PaddingType::kZeroPadding;
         }
 
-        sirius::ImageDecompositionPolicies image_decomposition =
-              sirius::ImageDecompositionPolicies::kRegular;
+        sirius::Filter frequency_filter;
+        if (!filter_path.empty()) {
+            LOG("sirius", info, "filter path: {}", filter_path);
+            sirius::Point hp(hotpoint.x, hotpoint.y);
+
+            frequency_filter = sirius::Filter::Create(
+                  filter_path, zoom_ratio, hp, padding_type, filter_normalize);
+        }
+
+        // resampling parameters
+        sirius::ImageDecompositionPolicies image_decomposition_policy =
+              sirius::ImageDecompositionPolicies::kPeriodicSmooth;
         sirius::FrequencyZoomStrategies zoom_strategy =
               sirius::FrequencyZoomStrategies::kPeriodization;
 
-        if (zero_padding_zoom) {
-            zoom_strategy = sirius::FrequencyZoomStrategies::kZeroPadding;
-        }
-        if (periodic_smooth) {
-            image_decomposition =
-                  sirius::ImageDecompositionPolicies::kPeriodicSmooth;
+        if (no_image_decomposition) {
+            LOG("sirius", info, "image decomposition: none");
+            image_decomposition_policy =
+                  sirius::ImageDecompositionPolicies::kRegular;
+        } else {
+            LOG("sirius", info, "image decomposition: periodic plus smooth");
         }
 
-        filter_->Init(zoom_ratio, filter_path, filter_padding_type,
-                      image_decomposition, zoom_strategy);
+        if (zoom_ratio.ratio() > 1) {
+            // choose the upsampling algorithm only if ratio > 1
+            if (force_upsample_periodization && !frequency_filter.IsLoaded()) {
+                LOG("sirius", error,
+                    "filter is required with periodization upsampling");
+                return;
+            } else if (force_upsample_zero_padding ||
+                       !frequency_filter.IsLoaded()) {
+                LOG("sirius", info, "upsampling: zero padding");
+                zoom_strategy = sirius::FrequencyZoomStrategies::kZeroPadding;
+                if (frequency_filter.IsLoaded()) {
+                    LOG("sirius", warn,
+                        "filter will be used with zero padding upsampling");
+                }
+            } else {
+                LOG("sirius", info, "upsampling: periodization");
+                zoom_strategy = sirius::FrequencyZoomStrategies::kPeriodization;
+            }
+        }
+
+        filter_->Init(zoom_ratio, std::move(frequency_filter),
+                      image_decomposition_policy, zoom_strategy);
 
         filter_->SetInput(GetParameterDoubleImage("in"));
         SetParameterOutputImage("out", filter_->GetOutput());

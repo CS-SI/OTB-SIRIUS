@@ -23,8 +23,7 @@
 #define OTB_FREQUENCY_RESAMPLE_FILTER_H_
 
 #include <sirius/filter.h>
-#include <sirius/frequency_zoom_factory.h>
-#include <sirius/i_frequency_zoom.h>
+#include <sirius/frequency_resampler_factory.h>
 #include <sirius/image.h>
 #include <sirius/types.h>
 
@@ -67,13 +66,11 @@ class FrequencyResampleFilter
     /**
      * \brief Init the ImageToImageFilter with Sirius parameters
      * \param zoom_ratio zoom ratio
-     * \param filter_path path to the filter image
-     * \param padding_type type of the filter padding
+     * \param filter filter
      * \param image_decomposition requested image decomposition
      * \param zoom_strategy requested zoom strategy
      */
-    void Init(const sirius::ZoomRatio& zoom_ratio,
-              const std::string& filter_path, sirius::PaddingType padding_type,
+    void Init(const sirius::ZoomRatio& zoom_ratio, sirius::Filter&& filter,
               sirius::ImageDecompositionPolicies image_decomposition,
               sirius::FrequencyZoomStrategies zoom_strategy);
 
@@ -118,7 +115,7 @@ class FrequencyResampleFilter
     sirius::ZoomRatio zoom_ratio_;
     sirius::Filter filter_;
     sirius::PaddingType padding_type_;
-    sirius::IFrequencyZoom::UPtr frequency_zoom_;
+    sirius::IFrequencyResampler::UPtr frequency_resampler_;
 };
 
 }  // namespace otb
