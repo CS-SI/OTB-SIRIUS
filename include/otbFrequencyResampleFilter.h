@@ -114,7 +114,6 @@ class FrequencyResampleFilter
   private:
     sirius::ZoomRatio zoom_ratio_;
     sirius::Filter filter_;
-    sirius::PaddingType padding_type_;
     sirius::IFrequencyResampler::UPtr frequency_resampler_;
 };
 
