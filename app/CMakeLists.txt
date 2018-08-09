@@ -22,6 +22,8 @@
 otb_create_application(
     NAME FrequencyResample
     SOURCES FrequencyResample.cxx
+    INCLUDE_DIRS
+        ${SIRIUS_INCLUDE_DIRS}
     LINK_LIBRARIES
-        libsirius-static
+        ${SIRIUS_LIBRARIES}
         ${${otb-module}_LIBRARIES})

@@ -24,18 +24,22 @@ project(FrequencyResample)
 
 set(FREQUENCY_RESAMPLE_VERSION "0.0.0")
 
-message(STATUS "FreqZoom ${FREQUENCY_RESAMPLE_VERSION}")
+set(SIRIUS_ROOT "/path/sirius/install/dir" CACHE STRING "Sirius install directory")
+
+message(STATUS "Frequency Resample ${FREQUENCY_RESAMPLE_VERSION}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+
+if ("${SIRIUS_ROOT}" STREQUAL "")
+    message(FATAL_ERROR "Sirius install directory (-DSIRIUS_ROOT) must be set")
+endif()
+message(STATUS "Sirius install directory: ${SIRIUS_ROOT}")
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 5.0)
-        # this definition is required to build with OTB
-        add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
-    endif()
-endif()
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+find_package(SIRIUS)
 
 # set CXX flags
 set(FREQUENCY_RESAMPLE_CXX_FLAGS "")
@@ -46,8 +50,6 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     # MSVC compiler
 endif()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${FREQUENCY_RESAMPLE_CXX_FLAGS}")
-
-add_subdirectory(third_party)
 
 if(NOT OTB_SOURCE_DIR)
     find_package(OTB REQUIRED)

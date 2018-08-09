@@ -29,7 +29,8 @@ set(${otb-module}_Tests
 add_executable(otbFrequencyResampleTestDriver ${${otb-module}_Tests})
 target_link_libraries(otbFrequencyResampleTestDriver
     ${${otb-module}-Test_LIBRARIES}
-    libsirius-static)
+    ${SIRIUS_LIBRARIES})
+target_include_directories(otbFrequencyResampleTestDriver PUBLIC ${SIRIUS_INCLUDE_DIRS})
 
 otb_module_target_label(otbFrequencyResampleTestDriver)
 

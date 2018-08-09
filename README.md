@@ -20,38 +20,33 @@ This module is using [CMake] to build its libraries and executables.
 * [CMake] >=3.2
 * [GDAL] development kit, >=2
 * [FFTW] development kit, >=3
+* [Sirius library][Sirius]
 
 ### Dependencies
 
-[Sirius library][Sirius] is integrated in this [OTB][OTB] module as a Git submodule.
-
-`libsirius-static` [CMake] target is made available thanks to CMake project inclusion and added as a [CMake] link dependency to the OTB module.
-Sirius library will be built automatically with the OTB module settings (compilation flags, options).
+OTB Frequency Resample Module depends on the [Sirius library][Sirius].
+In order to find the library using [CMake] `find_package` helper, `SIRIUS_ROOT` **must** be set to a Sirius install directory.
 
 ### Options
 
 * `CMAKE_BUILD_TYPE`: Debug, Release, RelWithDebInfo and MinSizeRel
-* `OTB_BUILD_MODULE_AS_STANDALONE`: set to `ON` to build `FrequencyResample` as a standalone module (required)
-* `OTB_DIR`: path to the OTB SDK [CMake] directory
+* `SIRIUS_ROOT`: path to Sirius install directory (required)
+* `OTB_BUILD_MODULE_AS_STANDALONE`: set to `ON` to build `FrequencyResample` as a standalone module
+* `OTB_DIR`: path to the OTB SDK [CMake] directory if build as a standalone module
 * `BUILD_TESTING`: set to `ON` to enable tests
 
 ### Example
 
 ```sh
-git clone --recursive https://github.com/CS-SI/OTB-SIRIUS.git
+git clone https://github.com/CS-SI/OTB-SIRIUS.git
 mkdir .build
 cd .build
 cmake .. -DCMAKE_BUILD_TYPE=Release \
+         -DSIRIUS_ROOT=/path/to/Sirius/install/directory \
          -DOTB_BUILD_MODULE_AS_STANDALONE=ON \
          -DOTB_DIR=/path/to/OTB/SDK/lib/cmake/OTB-x.y \
          -DBUILD_TESTING=ON
 cmake --build .
-```
-
-If Sirius submodule commit reference is updated, you need to run the following command:
-
-```sh
-git submodule update
 ```
 
 ## How to use
@@ -87,8 +82,8 @@ using FilterType = otb::FrequencyResampleFilter<DoubleImageType>;
 // initialization parameters
 sirius::ZoomRatio zoom_ratio(2, 1);
 
-sirius::Filter freq_filter = sirius::Filter::Create("/path/to/image/filter_2.tif",
-                                                    zoom_ratio);
+sirius::Image filter_image = {...};
+sirius::Filter freq_filter = sirius::Filter::Create(filter_image, zoom_ratio);
 
 sirius::ImageDecompositionPolicies image_decomposition =
       sirius::ImageDecompositionPolicies::kRegular;

@@ -71,56 +71,92 @@ class FrequencyResample : public Application {
         AddDocTag("Resample");
         AddDocTag(Tags::Geometry);
 
-        AddParameter(ParameterType_InputImage, "in", "Input Image");
+        AddParameter(ParameterType_InputImage, "in", "Input image");
+        SetParameterDescription("in", "Path to the input image");
         AddParameter(ParameterType_OutputImage, "out", "Output Image");
+        SetParameterDescription("out", "Path to the output image");
 
-        AddParameter(ParameterType_String, "v",
-                     "Verbosity: trace,debug,info,warn,err,critical,off");
-        MandatoryOff("v");
+        AddParameter(ParameterType_String, "v", "Verbosity");
         SetParameterString("v", "info");
+        SetParameterDescription(
+              "v", "Verbosity: trace,debug,info,warn,err,critical,off");
+        MandatoryOff("v");
 
         // resampling
         AddParameter(ParameterType_Group, "resampling", "Resampling options");
+        SetParameterDescription("resampling", "Resampling options");
+
         AddParameter(ParameterType_String, "resampling.ratio",
-                     "Resampling ratio as input:output, allowed format: I "
-                     "(equivalent to I:1), I:O");
+                     "Resampling ratio");
+        SetParameterDescription(
+              "resampling.ratio",
+              "Resampling ratio as input:output, allowed format: I "
+              "(equivalent to I:1), I:O");
         SetParameterString("resampling.ratio", "1:1");
-        AddParameter(ParameterType_Empty, "resampling.noimagedecomposition",
+
+        AddParameter(ParameterType_Bool, "resampling.noimagedecomposition",
                      "Do not decompose the input image (default: periodic plus "
                      "smooth image decomposition)");
+        SetParameterDescription(
+              "resampling.noimagedecomposition",
+              "Do not decompose the input image (default: periodic plus "
+              "smooth image decomposition)");
+        MandatoryOff("resampling.noimagedecomposition");
+
         AddParameter(ParameterType_Group, "resampling.upsample",
-                     "Upsample options");
-        AddParameter(ParameterType_Empty, "resampling.upsample.periodization",
-                     "Force periodization as upsampling algorithm (default "
-                     "algorithm if a filter is provided). A filter is required "
-                     "to use this algorithm");
-        AddParameter(ParameterType_Empty, "resampling.upsample.zeropadding",
-                     "Force zero padding as upsampling algorithm (default "
-                     "algorithm if no filter is provided)");
+                     "Upsampling options");
+        AddParameter(ParameterType_Bool, "resampling.upsample.periodization",
+                     "Force periodization as upsampling algorithm");
+        SetParameterDescription(
+              "resampling.upsample.periodization",
+              "Force periodization as upsampling algorithm (default "
+              "algorithm if a filter is provided). A filter is required "
+              "to use this algorithm");
+        MandatoryOff("resampling.upsample.periodization");
+
+        AddParameter(ParameterType_Bool, "resampling.upsample.zeropadding",
+                     "Force zero padding as upsampling algorithm ");
+        SetParameterDescription(
+              "resampling.upsample.zeropadding",
+              "Force zero padding as upsampling algorithm (default "
+              "algorithm if no filter is provided)");
+        MandatoryOff("resampling.upsample.zeropadding");
 
         // filter
-        AddParameter(ParameterType_Group, "filter", "filter options");
-        AddParameter(ParameterType_String, "filter.path",
+        AddParameter(ParameterType_Group, "filter", "Filter options");
+        SetParameterDescription("filter", "Filter options");
+        AddParameter(ParameterType_InputImage, "filter.path",
                      "Path to the filter image to apply to the zoomed image");
         MandatoryOff("filter.path");
-        AddParameter(ParameterType_Empty, "filter.normalize",
-                     "Normalize filter coefficients "
-                     "(default: no normalization)");
+
+        AddParameter(ParameterType_Bool, "filter.normalize",
+                     "Normalize filter coefficients");
+        SetParameterDescription("filter.normalize",
+                                "Normalize filter coefficients "
+                                "(default: no normalization)");
         MandatoryOff("filter.normalize");
-        AddParameter(ParameterType_Empty, "filter.zeropadrealedges",
-                     "Force zero padding strategy on real input edges "
-                     "(default: mirror padding)");
+
+        AddParameter(ParameterType_Bool, "filter.zeropadrealedges",
+                     "Force zero padding strategy on real input edges");
+        SetParameterDescription(
+              "filter.zeropadrealedges",
+              "Force zero padding strategy on real input edges "
+              "(default: mirror padding)");
         MandatoryOff("filter.zeropadrealedges");
 
         AddParameter(ParameterType_Group, "filter.hotpoint",
-                     "hotpoint filter options");
+                     "Hot point filter options");
+        SetParameterDescription("filter.hotpoint", "Hot point filter options");
         AddParameter(ParameterType_Int, "filter.hotpoint.x",
                      "Hot point x coordinate");
+        SetParameterDescription("filter.hotpoint.x", "Hot point x coordinate");
         SetDefaultParameterInt("filter.hotpoint.x",
                                sirius::filter_default_hot_point.x);
         MandatoryOff("filter.hotpoint.x");
+
         AddParameter(ParameterType_Int, "filter.hotpoint.y",
                      "Hot point y coordinate");
+        SetParameterDescription("filter.hotpoint.y", "Hot point y coordinate");
         SetDefaultParameterInt("filter.hotpoint.y",
                                sirius::filter_default_hot_point.y);
         MandatoryOff("filter.hotpoint.y");
@@ -145,16 +181,16 @@ class FrequencyResample : public Application {
         auto zoom_ratio = sirius::ZoomRatio::Create(resampling_ratio);
 
         auto no_image_decomposition =
-              GetParameterEmpty("resampling.noimagedecomposition");
+              IsParameterEnabled("resampling.noimagedecomposition");
         auto force_upsample_periodization =
-              GetParameterEmpty("resampling.upsample.periodization");
+              IsParameterEnabled("resampling.upsample.periodization");
         auto force_upsample_zero_padding =
-              GetParameterEmpty("resampling.upsample.zeropadding");
+              IsParameterEnabled("resampling.upsample.zeropadding");
 
         // frequency filter
-        auto filter_path = GetParameterAsString("filter.path");
-        auto filter_normalize = GetParameterEmpty("filter.normalize");
-        auto zero_pad_real_edges = GetParameterEmpty("filter.zeropadrealedges");
+        auto filter_normalize = IsParameterEnabled("filter.normalize");
+        auto zero_pad_real_edges =
+              IsParameterEnabled("filter.zeropadrealedges");
 
         sirius::Point hotpoint = sirius::filter_default_hot_point;
         hotpoint.x = GetParameterInt("filter.hotpoint.x");
@@ -166,12 +202,14 @@ class FrequencyResample : public Application {
         }
 
         sirius::Filter frequency_filter;
-        if (!filter_path.empty()) {
-            LOG("sirius", info, "filter path: {}", filter_path);
+        if (HasValue("filter.path")) {
+            auto otb_filter_image = GetParameterDoubleImage("filter.path");
+            auto filter_image = CreateFilterImage(otb_filter_image);
             sirius::Point hp(hotpoint.x, hotpoint.y);
 
-            frequency_filter = sirius::Filter::Create(
-                  filter_path, zoom_ratio, hp, padding_type, filter_normalize);
+            frequency_filter =
+                  sirius::Filter::Create(std::move(filter_image), zoom_ratio,
+                                         hp, padding_type, filter_normalize);
         }
 
         // resampling parameters
@@ -213,6 +251,24 @@ class FrequencyResample : public Application {
 
         filter_->SetInput(GetParameterDoubleImage("in"));
         SetParameterOutputImage("out", filter_->GetOutput());
+    }
+
+    sirius::Image CreateFilterImage(DoubleImageType* otb_image) {
+        auto region = otb_image->GetLargestPossibleRegion();
+        auto region_size = region.GetSize();
+        sirius::Image filter_image({static_cast<int>(region_size[1]),
+                                    static_cast<int>(region_size[0])});
+        otb_image->Update();
+        itk::ImageRegionConstIteratorWithIndex<
+              std::remove_pointer_t<decltype(otb_image)>>
+              it(otb_image, region);
+        // copy pixels that could be read
+        int image_index = 0;
+        for (it.GoToBegin(); !it.IsAtEnd(); ++it) {
+            filter_image.data[image_index] = static_cast<double>(it.Get());
+            ++image_index;
+        }
+        return filter_image;
     }
 
   private:
